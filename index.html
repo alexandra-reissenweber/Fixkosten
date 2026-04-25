@@ -32,7 +32,7 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             background: var(--white);
             border-radius: 12px;
@@ -291,9 +291,11 @@
             background: var(--white);
             padding: 30px;
             border-radius: 12px;
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .modal-title {
@@ -344,6 +346,45 @@
             opacity: 0.8;
         }
 
+        .hidden {
+            display: none;
+        }
+
+        .monthly-overview {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 3px solid var(--beige-dark);
+        }
+
+        .monthly-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .month-card {
+            background: linear-gradient(135deg, var(--beige-light) 0%, var(--beige-medium) 100%);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid var(--beige-dark);
+        }
+
+        .month-name {
+            font-size: 12px;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .month-amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -364,6 +405,10 @@
             th, td {
                 padding: 8px;
             }
+
+            .monthly-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
@@ -371,28 +416,30 @@
     <div class="container">
         <header>
             <h1>💰 Fixkosten-Planer</h1>
-            <p class="subtitle">Übersicht deiner monatlichen Fixkosten</p>
+            <p class="subtitle">Jahresübersicht deiner monatlichen Fixkosten</p>
         </header>
 
         <div id="successMessage" class="success-message"></div>
 
-        <!-- Statistiken -->
         <div class="stats-grid">
             <div class="stat-box">
-                <div class="stat-label">Gesamt / Monat</div>
-                <div class="stat-value" id="totalAmount">€ 0,00</div>
+                <div class="stat-label">Ø Monatlich</div>
+                <div class="stat-value" id="avgAmount">€ 0,00</div>
             </div>
             <div class="stat-box">
-                <div class="stat-label">Geschäftlich / Monat</div>
-                <div class="stat-value" id="businessAmount">€ 0,00</div>
+                <div class="stat-label">Jahressumme</div>
+                <div class="stat-value" id="yearlyAmount">€ 0,00</div>
             </div>
             <div class="stat-box">
-                <div class="stat-label">Privat / Monat</div>
-                <div class="stat-value" id="privateAmount">€ 0,00</div>
+                <div class="stat-label">Min. Monat</div>
+                <div class="stat-value" id="minMonth">€ 0,00</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Max. Monat</div>
+                <div class="stat-value" id="maxMonth">€ 0,00</div>
             </div>
         </div>
 
-        <!-- Eingabeformular -->
         <div class="form-section">
             <div class="form-title">Neue Fixkosten hinzufügen</div>
             <div class="form-grid">
@@ -401,8 +448,34 @@
                     <input type="text" id="costName" placeholder="z.B. Adobe Abo">
                 </div>
                 <div>
-                    <label>Betrag / Monat (€)</label>
+                    <label>Betrag (€)</label>
                     <input type="number" id="costAmount" placeholder="z.B. 60,00" step="0.01" min="0">
+                </div>
+                <div>
+                    <label>Zahlungsrhythmus</label>
+                    <select id="costFrequency" onchange="toggleMonthField()">
+                        <option value="monthly">Monatlich</option>
+                        <option value="quarterly">Vierteljährlich</option>
+                        <option value="biannual">Halbjährlich</option>
+                        <option value="yearly">Jährlich</option>
+                    </select>
+                </div>
+                <div id="monthFieldContainer">
+                    <label>Zahlungsmonat</label>
+                    <select id="costMonth">
+                        <option value="January">Januar</option>
+                        <option value="February">Februar</option>
+                        <option value="March">März</option>
+                        <option value="April">April</option>
+                        <option value="May">Mai</option>
+                        <option value="June">Juni</option>
+                        <option value="July">Juli</option>
+                        <option value="August">August</option>
+                        <option value="September">September</option>
+                        <option value="October">Oktober</option>
+                        <option value="November">November</option>
+                        <option value="December">Dezember</option>
+                    </select>
                 </div>
                 <div>
                     <label>Kategorie</label>
@@ -463,14 +536,17 @@
             </div>
         </div>
 
-        <!-- Tabelle -->
         <div class="table-section">
             <div class="section-title">Übersicht aller Fixkosten</div>
             <div id="tableContainer"></div>
         </div>
+
+        <div class="monthly-overview">
+            <div class="section-title">📅 Monatliche Belastung (Jahresübersicht)</div>
+            <div class="monthly-grid" id="monthlyGrid"></div>
+        </div>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <div class="modal-title">Fixkosten bearbeiten</div>
@@ -480,8 +556,34 @@
                     <input type="text" id="editCostName">
                 </div>
                 <div>
-                    <label>Betrag / Monat (€)</label>
+                    <label>Betrag (€)</label>
                     <input type="number" id="editCostAmount" step="0.01" min="0">
+                </div>
+                <div>
+                    <label>Zahlungsrhythmus</label>
+                    <select id="editCostFrequency" onchange="toggleEditMonthField()">
+                        <option value="monthly">Monatlich</option>
+                        <option value="quarterly">Vierteljährlich</option>
+                        <option value="biannual">Halbjährlich</option>
+                        <option value="yearly">Jährlich</option>
+                    </select>
+                </div>
+                <div id="editMonthFieldContainer">
+                    <label>Zahlungsmonat</label>
+                    <select id="editCostMonth">
+                        <option value="January">Januar</option>
+                        <option value="February">Februar</option>
+                        <option value="March">März</option>
+                        <option value="April">April</option>
+                        <option value="May">Mai</option>
+                        <option value="June">Juni</option>
+                        <option value="July">Juli</option>
+                        <option value="August">August</option>
+                        <option value="September">September</option>
+                        <option value="October">Oktober</option>
+                        <option value="November">November</option>
+                        <option value="December">Dezember</option>
+                    </select>
                 </div>
                 <div>
                     <label>Kategorie</label>
@@ -545,11 +647,58 @@
     </div>
 
     <script>
-        // Google Apps Script URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1LJMQhQjDwY-dXceG0HgxvB23LoHUKTpwxGBA4wCxqp5zI_PpQf0Pcht9B8S6HUL4/exec';
+           const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1LJMQhQjDwY-dXceG0HgxvB23LoHUKTpwxGBA4wCxqp5zI_PpQf0Pcht9B8S6HUL4/exec';
+
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthsDE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
         let costs = JSON.parse(localStorage.getItem('fixkosten')) || [];
         let editingIndex = null;
+
+        function toggleMonthField() {
+            const frequency = document.getElementById('costFrequency').value;
+            const container = document.getElementById('monthFieldContainer');
+            container.style.display = frequency === 'monthly' ? 'none' : 'block';
+        }
+
+        function toggleEditMonthField() {
+            const frequency = document.getElementById('editCostFrequency').value;
+            const container = document.getElementById('editMonthFieldContainer');
+            container.style.display = frequency === 'monthly' ? 'none' : 'block';
+        }
+
+        function getMonthsForCost(frequency, month) {
+            const monthIndex = months.indexOf(month);
+            const result = [];
+
+            if (frequency === 'monthly') {
+                return Array.from({length: 12}, (_, i) => i);
+            } else if (frequency === 'yearly') {
+                return [monthIndex];
+            } else if (frequency === 'biannual') {
+                return [monthIndex, (monthIndex + 6) % 12];
+            } else if (frequency === 'quarterly') {
+                return [monthIndex, (monthIndex + 3) % 12, (monthIndex + 6) % 12, (monthIndex + 9) % 12];
+            }
+            return result;
+        }
+
+        function calculateMonthlyAmounts() {
+            const monthlyTotals = Array(12).fill(0);
+
+            costs.forEach(cost => {
+                const monthIndices = getMonthsForCost(cost.frequency, cost.month);
+                monthIndices.forEach(idx => {
+                    let amount = cost.amount;
+                    if (cost.type === 'gemischt') {
+                        amount = cost.amount * 0.5;
+                    }
+                    monthlyTotals[idx] += amount;
+                });
+            });
+
+            return monthlyTotals;
+        }
 
         function saveCostsToGoogle() {
             costs.forEach((cost, index) => {
@@ -559,6 +708,8 @@
                         action: 'addCost',
                         kostenname: cost.name,
                         betrag: cost.amount,
+                        rhythmus: cost.frequency,
+                        monat: cost.month,
                         kategorie: cost.category,
                         klassifizierung: cost.type,
                         index: index
@@ -570,6 +721,8 @@
         function addCost() {
             const name = document.getElementById('costName').value.trim();
             const amount = parseFloat(document.getElementById('costAmount').value);
+            const frequency = document.getElementById('costFrequency').value;
+            const month = document.getElementById('costMonth').value;
             const category = document.getElementById('costCategory').value;
             const type = document.getElementById('costType').value;
 
@@ -578,17 +731,21 @@
                 return;
             }
 
-            costs.push({ name, amount, category, type });
+            costs.push({ name, amount, frequency, month, category, type });
             localStorage.setItem('fixkosten', JSON.stringify(costs));
             saveCostsToGoogle();
 
             document.getElementById('costName').value = '';
             document.getElementById('costAmount').value = '';
+            document.getElementById('costFrequency').value = 'monthly';
+            document.getElementById('costMonth').value = 'January';
             document.getElementById('costCategory').value = '';
             document.getElementById('costType').value = 'geschäftlich';
+            toggleMonthField();
 
             showMessage('✅ Fixkosten hinzugefügt!');
             renderTable();
+            renderMonthlyOverview();
             updateStats();
         }
 
@@ -598,6 +755,7 @@
                 localStorage.setItem('fixkosten', JSON.stringify(costs));
                 saveCostsToGoogle();
                 renderTable();
+                renderMonthlyOverview();
                 updateStats();
                 showMessage('🗑️ Gelöscht!');
             }
@@ -608,14 +766,19 @@
             const cost = costs[index];
             document.getElementById('editCostName').value = cost.name;
             document.getElementById('editCostAmount').value = cost.amount;
+            document.getElementById('editCostFrequency').value = cost.frequency;
+            document.getElementById('editCostMonth').value = cost.month;
             document.getElementById('editCostCategory').value = cost.category;
             document.getElementById('editCostType').value = cost.type;
+            toggleEditMonthField();
             document.getElementById('editModal').classList.add('active');
         }
 
         function saveEdit() {
             const name = document.getElementById('editCostName').value.trim();
             const amount = parseFloat(document.getElementById('editCostAmount').value);
+            const frequency = document.getElementById('editCostFrequency').value;
+            const month = document.getElementById('editCostMonth').value;
             const category = document.getElementById('editCostCategory').value;
             const type = document.getElementById('editCostType').value;
 
@@ -624,12 +787,13 @@
                 return;
             }
 
-            costs[editingIndex] = { name, amount, category, type };
+            costs[editingIndex] = { name, amount, frequency, month, category, type };
             localStorage.setItem('fixkosten', JSON.stringify(costs));
             saveCostsToGoogle();
             closeEditModal();
             showMessage('✅ Aktualisiert!');
             renderTable();
+            renderMonthlyOverview();
             updateStats();
         }
 
@@ -645,13 +809,19 @@
                 return;
             }
 
-            let html = '<table><thead><tr><th>Kostenname</th><th>Monat</th><th>Kategorie</th><th>Typ</th><th>Aktionen</th></tr></thead><tbody>';
+            let html = '<table><thead><tr><th>Kostenname</th><th>Betrag</th><th>Rhythmus</th><th>Kategorie</th><th>Typ</th><th>Aktionen</th></tr></thead><tbody>';
 
             costs.forEach((cost, index) => {
+                const monthDE = cost.month ? monthsDE[months.indexOf(cost.month)] : '';
+                const rhythmusText = cost.frequency === 'monthly' ? 'Monatlich' :
+                                     cost.frequency === 'quarterly' ? 'Vierteljährlich' :
+                                     cost.frequency === 'biannual' ? 'Halbjährlich' : 'Jährlich';
+
                 html += `
                     <tr>
                         <td>${cost.name}</td>
                         <td>€ ${cost.amount.toFixed(2).replace('.', ',')}</td>
+                        <td>${rhythmusText} ${monthDE ? `(${monthDE})` : ''}</td>
                         <td>${cost.category}</td>
                         <td>${cost.type === 'gemischt' ? '50/50' : cost.type}</td>
                         <td>
@@ -666,26 +836,34 @@
             container.innerHTML = html;
         }
 
-        function updateStats() {
-            let total = 0, business = 0, personal = 0;
+        function renderMonthlyOverview() {
+            const monthlyTotals = calculateMonthlyAmounts();
+            const container = document.getElementById('monthlyGrid');
 
-            costs.forEach(cost => {
-                if (cost.type === 'geschäftlich') {
-                    business += cost.amount;
-                    total += cost.amount;
-                } else if (cost.type === 'privat') {
-                    personal += cost.amount;
-                    total += cost.amount;
-                } else if (cost.type === 'gemischt') {
-                    business += cost.amount * 0.5;
-                    personal += cost.amount * 0.5;
-                    total += cost.amount;
-                }
+            let html = '';
+            monthlyTotals.forEach((total, idx) => {
+                html += `
+                    <div class="month-card">
+                        <div class="month-name">${monthsDE[idx]}</div>
+                        <div class="month-amount">€ ${total.toFixed(2).replace('.', ',')}</div>
+                    </div>
+                `;
             });
 
-            document.getElementById('totalAmount').textContent = '€ ' + total.toFixed(2).replace('.', ',');
-            document.getElementById('businessAmount').textContent = '€ ' + business.toFixed(2).replace('.', ',');
-            document.getElementById('privateAmount').textContent = '€ ' + personal.toFixed(2).replace('.', ',');
+            container.innerHTML = html;
+        }
+
+        function updateStats() {
+            const monthlyTotals = calculateMonthlyAmounts();
+            const yearlyTotal = monthlyTotals.reduce((a, b) => a + b, 0);
+            const avgMonthly = yearlyTotal / 12;
+            const minMonth = Math.min(...monthlyTotals);
+            const maxMonth = Math.max(...monthlyTotals);
+
+            document.getElementById('avgAmount').textContent = '€ ' + avgMonthly.toFixed(2).replace('.', ',');
+            document.getElementById('yearlyAmount').textContent = '€ ' + yearlyTotal.toFixed(2).replace('.', ',');
+            document.getElementById('minMonth').textContent = '€ ' + minMonth.toFixed(2).replace('.', ',');
+            document.getElementById('maxMonth').textContent = '€ ' + maxMonth.toFixed(2).replace('.', ',');
         }
 
         function showMessage(msg) {
@@ -696,7 +874,9 @@
         }
 
         // Initialize
+        toggleMonthField();
         renderTable();
+        renderMonthlyOverview();
         updateStats();
     </script>
 </body>
